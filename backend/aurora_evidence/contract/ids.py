@@ -81,3 +81,86 @@ def atom_set_id_for(
         "atomic_claims": atomic_claims,
     }
     return f"aset_{canonical_sha256(obj)}"
+
+
+
+#: Every Atom field that participates in the atom_set_id hash, per the contract
+#: ("atomic_claims berisi SEMUA field Atom sesuai kontrak").
+_ATOM_HASH_FIELDS = (
+    "atom_id",
+    "statement",
+    "role",
+    "subject",
+    "predicate",
+    "object",
+    "qualifiers",
+    "spans",
+    "depends_on",
+    "check_worthiness",
+    "parser_confidence",
+)
+_QUALIFIER_HASH_FIELDS = ("negated", "quantity", "time", "location")
+
+
+def normalize_atoms_for_hash(atoms: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Put an atom list into the exact canonical shape the contract hashes.
+
+    The contract fixes three orderings so that the same atom set produces the
+    same ``atom_set_id`` in all three repositories regardless of how each one
+    happens to build its lists:
+
+    * the array is sorted by ``atom_id``,
+    * ``depends_on`` is sorted lexicographically,
+    * ``spans`` are sorted by ``start`` then ``end``.
+
+    Only contract fields are kept. Any local extra key is dropped here rather
+    than silently changing the hash — extras belong in ``extensions``, not in
+    the identity of the atom set.
+
+    Note that JCS already sorts object keys, so this function only has to fix
+    *array* order; it deliberately does not reorder object members itself.
+    """
+    normalized: list[dict[str, Any]] = []
+    for atom in atoms:
+        if not isinstance(atom, dict):
+            raise TypeError(f"atom must be an object, got {type(atom)!r}")
+
+        qualifiers_in = atom.get("qualifiers")
+        if not isinstance(qualifiers_in, dict):
+            raise TypeError("atom.qualifiers must be an object")
+        qualifiers = {key: qualifiers_in.get(key) for key in _QUALIFIER_HASH_FIELDS}
+
+        spans_in = atom.get("spans")
+        if not isinstance(spans_in, list):
+            raise TypeError("atom.spans must be an array")
+        spans = sorted(
+            ({"start": span.get("start"), "end": span.get("end")} for span in spans_in),
+            key=lambda span: (span["start"], span["end"]),
+        )
+
+        depends_in = atom.get("depends_on")
+        if not isinstance(depends_in, list):
+            raise TypeError("atom.depends_on must be an array")
+        depends_on = sorted(depends_in)
+
+        entry = {key: atom.get(key) for key in _ATOM_HASH_FIELDS}
+        entry["qualifiers"] = qualifiers
+        entry["spans"] = spans
+        entry["depends_on"] = depends_on
+        normalized.append(entry)
+
+    normalized.sort(key=lambda atom: atom["atom_id"])
+    return normalized
+
+
+def atom_set_id_from_bundle(bundle: dict[str, Any]) -> str:
+    """Recompute ``atom_set_id`` straight from a bundle (validation helper)."""
+    analysis = bundle.get("analysis") or {}
+    image = (bundle.get("input") or {}).get("image")
+    return atom_set_id_for(
+        case_id=bundle["case_id"],
+        claim_revision=bundle["claim_revision"],
+        claim_text=bundle["input"]["claim_text"],
+        image_sha256=(image or {}).get("sha256") if image else None,
+        atomic_claims=normalize_atoms_for_hash(analysis.get("atomic_claims") or []),
+    )
