@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "case_id": "11111111-1111-4111-8111-111111111111",
+  "claim_revision": 1,
+  "mode": "demo",
+  "created_at": "2026-09-12T00:00:00Z",
+  "input": {
+    "claim_text": "Banjir besar melanda Jakarta pada September 2026 dan merendam kawasan Monas.",
+    "language": "id",
+    "image": null,
+    "as_of": "2026-09-12T00:00:00Z"
+  },
+  "analysis": null,
+  "retrieval": null,
+  "decision": null,
+  "warnings": [],
+  "extensions": {
+    "aurora_evidence": {
+      "note": "Contoh masukan sintetis berlabel demo untuk jalur retrieval mandiri Development 2 (tanpa hasil Development 1). Tidak menyertakan gambar; image=null valid untuk modul 2.",
+      "expected_behavior": [
+        "Retrieval berjalan dengan analysis=null dan atom_ids=[] menggunakan caption utuh sebagai query.",
+        "atom_set_id pada Retrieval tetap null karena tidak ada analysis.",
+        "Provider tanpa kredensial dilaporkan sebagai unconfigured/unavailable, bukan gagal senyap.",
+        "Local corpus (BM25) memberi bukti nyata; forensic_signals terpisah dari evidence_list."
+      ]
+    }
+  }
+}

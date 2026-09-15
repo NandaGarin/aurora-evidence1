@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# uv
+# keep uv.lock committed; ignore local caches only
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Env & secrets (NEVER commit real secrets)
+.env
+.env.*
+!.env.example
+
+# Local runtime data (SQLite db, uploads, cache, exports)
+var/
+backups/
+
+# Artifacts & reports (keep directory, ignore generated content)
+artifacts/reports/*
+artifacts/handoff/*
+!artifacts/reports/.gitkeep
+!artifacts/handoff/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Playwright
+playwright-report/
+test-results/
