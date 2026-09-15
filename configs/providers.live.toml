@@ -1,0 +1,87 @@
+# ============================================================================
+# Profil provider AURORA Evidence — PROFIL B: "live" (adapter HTTP nyata)
+#
+# PERINGATAN VERIFIKASI. Setiap blok di bawah berisi endpoint dan pemetaan
+# field yang HARUS Anda verifikasi terhadap dokumentasi resmi vendor sebelum
+# dipakai. Nilai di sini adalah KERANGKA, bukan skema yang sudah dikonfirmasi:
+# repo ini dibangun di lingkungan tanpa akses internet, sehingga skema vendor
+# TIDAK dapat diverifikasi saat penulisan.
+#
+# Selama verified = false:
+#   - adapter tetap berjalan,
+#   - capability() menyatakan skema belum diverifikasi,
+#   - setiap ForensicSignal membawa limitation yang sama.
+# Setelah Anda cek dokumentasi resmi: isi endpoint/score_path/scale yang benar,
+# set verified = true, dan catat tanggal + URL dokumen di docs/providers.md.
+#
+# API key TIDAK PERNAH ditulis di file ini. required_config hanya menyebut NAMA
+# variabel environment; nilainya dibaca backend dari .env.
+# ============================================================================
+
+# ---------------------------------------------------------------- image ----
+[detectors.image.sightengine]
+modality = "image"
+# TODO(verifikasi): endpoint resmi + nama model/parameter.
+endpoint = "https://api.sightengine.com/1.0/check.json"
+method = "POST"
+upload_style = "multipart"          # gambar privat diunggah langsung
+payload_field = "media"
+extra_fields = { models = "genai" }  # TODO(verifikasi): nama model
+# TODO(verifikasi): path field skor pada respons JSON.
+score_path = "type.ai_generated"
+label_path = "status"
+scale = { min = 0.0, max = 1.0, higher_means_ai = true }  # TODO(verifikasi) arah!
+auth = { style = "form_fields", fields = ["api_user", "api_secret"] }
+required_config = ["api_user", "api_secret"]
+min_pixels = 16
+max_bytes = 15728640
+timeout_seconds = 45
+calibration_status = "unknown"
+verified = false
+docs_url = "https://sightengine.com/docs/"
+limitations = [
+  "Dukungan/akurasi untuk konten berbahasa Indonesia dan gambar hasil edit lokal belum diverifikasi.",
+  "Skor vendor bukan probabilitas terkalibrasi.",
+]
+
+# ----------------------------------------------------------------- text ----
+[detectors.text.gptzero]
+modality = "text"
+# TODO(verifikasi): endpoint resmi + versi API.
+endpoint = "https://api.gptzero.me/v2/predict/text"
+method = "POST"
+upload_style = "json_text"
+payload_field = "document"
+# TODO(verifikasi): path skor. Perhatikan ARAH: sebagian vendor mengembalikan
+# probabilitas "human", bukan "ai". Salah arah = kesimpulan terbalik.
+score_path = "documents.0.completely_generated_prob"
+label_path = "documents.0.result_message"
+scale = { min = 0.0, max = 1.0, higher_means_ai = true }  # TODO(verifikasi) arah!
+auth = { style = "header", header = "x-api-key" }
+required_config = ["api_key"]
+# Teks pendek WAJIB unsupported, bukan "ditulis manusia".
+min_characters = 250
+max_characters = 50000
+# Kosongkan HANYA jika dokumentasi resmi menyatakan dukungan bahasa Indonesia.
+languages = ["en"]
+timeout_seconds = 45
+calibration_status = "provider_claimed"
+verified = false
+docs_url = "https://gptzero.stoplight.io/"
+limitations = [
+  "Dukungan bahasa Indonesia belum diverifikasi; caption berbahasa Indonesia kemungkinan unsupported.",
+  "Skor vendor bukan probabilitas terkalibrasi.",
+]
+
+[selection]
+image_detector = "sightengine"
+text_detector  = "gptzero"
+
+[retrieval]
+per_query_limit = 10
+max_evidence = 20
+budget_seconds = 45
+strict_temporal = true
+per_group_cap = 2
+mmr_lambda = 0.7
+corpus_version = "unset"

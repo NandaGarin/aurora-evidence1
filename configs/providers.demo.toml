@@ -1,0 +1,27 @@
+# ============================================================================
+# Profil provider AURORA Evidence — PROFIL A: "demo" (tanpa kredensial)
+#
+# Membuktikan penggantian provider TANPA mengubah business logic: hanya file
+# ini + AURORA_*_DETECTOR_PROVIDER yang berubah. Bandingkan dengan
+# providers.live.toml (profil B).
+#
+# Profil ini memakai detector fixture berlabel. Fixture HANYA sah pada
+# mode=demo; registry menolaknya saat mode=live.
+# ============================================================================
+
+[detectors]
+# Tidak ada profil HTTP di sini. Nama "fixture" diselesaikan langsung oleh
+# registry, jadi profil demo tidak butuh endpoint apa pun.
+
+[selection]
+image_detector = "fixture"
+text_detector  = "fixture"
+
+[retrieval]
+per_query_limit = 10
+max_evidence = 20
+budget_seconds = 45
+strict_temporal = true
+per_group_cap = 2
+mmr_lambda = 0.7
+corpus_version = "demo-corpus-2"
