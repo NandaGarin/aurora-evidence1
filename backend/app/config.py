@@ -57,6 +57,10 @@ class Settings:
     text_detector_provider: str
     dense_enabled: bool
 
+    # local retrieval + detector profile (paths, not secrets)
+    corpus_path: Path
+    provider_profile: Path
+
     # secrets held server-side only
     _secrets: dict[str, str] = field(default_factory=dict, repr=False)
 
@@ -102,9 +106,21 @@ class Settings:
             raise RuntimeError("AURORA_ALLOWED_HOSTS must be set in public mode")
 
 
+def repo_root() -> Path:
+    """Repository root, resolved from this file (backend/app/config.py)."""
+    return Path(__file__).resolve().parents[2]
+
+
 @lru_cache
 def get_settings() -> Settings:
     data_dir = Path(os.getenv("AURORA_DATA_DIR", "./var")).resolve()
+    root = repo_root()
+    corpus_path = Path(
+        os.getenv("AURORA_CORPUS_PATH", str(root / "fixtures" / "corpus" / "demo_corpus.jsonl"))
+    )
+    provider_profile = Path(
+        os.getenv("AURORA_PROVIDER_PROFILE", str(root / "configs" / "providers.demo.toml"))
+    )
     secrets = {
         "tavily": os.getenv("AURORA_TAVILY_API_KEY", ""),
         "serper": os.getenv("AURORA_SERPER_API_KEY", ""),
@@ -137,5 +153,7 @@ def get_settings() -> Settings:
         image_detector_provider=os.getenv("AURORA_IMAGE_DETECTOR_PROVIDER", "none"),
         text_detector_provider=os.getenv("AURORA_TEXT_DETECTOR_PROVIDER", "none"),
         dense_enabled=_bool("AURORA_DENSE_ENABLED", False),
+        corpus_path=corpus_path,
+        provider_profile=provider_profile,
         _secrets=secrets,
     )
