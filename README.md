@@ -23,13 +23,9 @@ Endpoint utama: `POST /api/v1/retrieve`. Port default: **API 8102**, **frontend 
 | Retrieval lokal (query planner, BM25, dedup, temporal, ranking) | ✅ `demo_verified` | Jalur lokal nyata |
 | Forensics / AI detector (interface, normalisasi, registry, fixture, adapter deklaratif) | ✅ `demo_verified` | Adapter HTTP belum dipanggil ke layanan nyata |
 | **API HTTP + Worker + Persistence** | 🟡 `implemented` | Ditulis pada Tahap 1; **belum** dijalankan end-to-end di lingkungan pembuatan (verifikasi lokal, lihat di bawah) |
-| Frontend React/Vite | ⛔ belum ada | Tahap berikutnya |
-| Fetch web + SSRF + adapter multisumber (Tavily/Serper/MAFINDO/reverse image) | ⛔ belum ada | Interface siap; adapter konkret belum |
-| Tests pytest, docs/, Docker, evaluasi IR | ⛔ belum ada | Tahap berikutnya |
-
-Rincian lengkap + bukti perintah ada di **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)**.
-Kontrak bersama: **[prompt-aurora/KONTRAK_BERSAMA.md](prompt-aurora/KONTRAK_BERSAMA.md)**.
-Instruksi implementasi: **[prompt-aurora/02_PROMPT_DEVELOPMENT_RETRIEVAL_AI_DETECTOR.md](prompt-aurora/02_PROMPT_DEVELOPMENT_RETRIEVAL_AI_DETECTOR.md)**.
+| Frontend React/Vite | ⛔ | 
+| Fetch web + SSRF + adapter multisumber (Tavily/Serper/MAFINDO/reverse image) | ⛔ | Interface siap; adapter konkret belum |
+| Tests pytest, docs/, Docker, evaluasi IR | ⛔ | Tahap berikutnya |
 
 ## Prasyarat
 
