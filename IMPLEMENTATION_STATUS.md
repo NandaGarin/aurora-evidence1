@@ -19,8 +19,15 @@ Kontrak: **v1.0.0**. Taksonomi status: `implemented`, `demo_verified`,
 >    **deklaratif**: endpoint, auth, dan pemetaan field respons dibaca dari
 >    `configs/providers.live.toml` dan seluruh profil vendor ditandai
 >    `verified = false`. Lihat "Yang belum diverifikasi".
-> 3. FastAPI/Pydantic/React belum bisa dijalankan di sini, sehingga lapisan API
->    HTTP dan frontend **belum ada** (bukan "ada tapi belum diuji").
+> 3. **Pembaruan (Tahap 1).** Lapisan API HTTP + worker + persistence kini
+>    **sudah ditulis** (`app/api/`, `app/workers/`, `app/services/`), tetapi
+>    FastAPI/SQLAlchemy/Pillow tetap tidak dapat dipasang di sandbox, sehingga
+>    statusnya `implemented` dan **bukan** `demo_verified`. Yang berhasil
+>    diverifikasi aktual di sini hanyalah bagian yang murni stdlib: `cli
+>    selftest` (14/14) dan `app/services/capabilities.py` (16/16, dengan stub
+>    `dotenv`). Verifikasi HTTP end-to-end harus dijalankan di mesin lokal
+>    dengan `uv sync` lalu `uv run python scripts/dev.py`.
+> 4. Frontend React **belum ada** (bukan "ada tapi belum diuji").
 
 ## Cara memverifikasi ulang (tanpa instalasi apa pun)
 
@@ -31,6 +38,29 @@ PYTHONPATH=. python3.11 -m aurora_evidence.cli retrieve ../prompt-aurora/contoh/
 PYTHONPATH=. python3.11 -m aurora_evidence.cli search "banjir Monas Jakarta"
 PYTHONPATH=. python3.11 -m aurora_evidence.cli capabilities --mode live --profile ../configs/providers.live.toml
 ```
+
+## Cara memverifikasi lapisan API (butuh instalasi, jalankan di mesin lokal)
+
+```bash
+cp .env.example .env          # Windows: copy .env.example .env
+uv sync --extra dev
+uv run python scripts/dev.py  # alembic upgrade head + uvicorn 127.0.0.1:8102
+
+# di terminal lain:
+curl http://127.0.0.1:8102/health
+curl http://127.0.0.1:8102/ready
+curl -X POST http://127.0.0.1:8102/api/v1/retrieve \
+  -H "Content-Type: application/json" -H "Idempotency-Key: demo-001" \
+  --data-binary @prompt-aurora/contoh/01_INPUT_RETRIEVAL.json
+curl http://127.0.0.1:8102/api/v1/jobs/<job_id>
+curl http://127.0.0.1:8102/api/v1/runs
+```
+
+Yang perlu diperiksa saat verifikasi lokal: `/ready` mengembalikan **200
+`degraded`** (bukan `ready`) karena provider eksternal belum dikonfigurasi;
+`POST /api/v1/retrieve` mengembalikan **202** lalu job menjadi `succeeded`;
+mengirim ulang `Idempotency-Key` yang sama dengan payload sama mengembalikan
+**job_id yang sama**, dan dengan payload berbeda mengembalikan **409**.
 
 ## Status per komponen
 
@@ -51,9 +81,10 @@ PYTHONPATH=. python3.11 -m aurora_evidence.cli capabilities --mode live --profil
 | Forensics: adapter HTTP deklaratif | `implemented` | Auth (bearer/header/basic/form), multipart & base64 upload, polling async, error mapping 401/403/402/429+Retry-After/413/415/422/5xx/timeout/unreachable/malformed/field-missing, redaksi secret. **Belum pernah dipanggil ke layanan nyata.** |
 | Pipeline end-to-end → `Retrieval` | `demo_verified` | Output divalidasi kontrak sebelum dikembalikan; 14/14 selftest lulus. |
 | CLI (`selftest`/`retrieve`/`search`/`capabilities`/`detect-text`/`validate-bundle`/`corpus-stats`) | `demo_verified` | Output aktual ada di bagian berikut. |
-| **Backend FastAPI + endpoint kontrak** | **belum ada** | `/health`, `/ready`, `/api/v1/media`, `/api/v1/retrieve`, `/api/v1/jobs/{id}` belum diimplementasikan. |
-| **Worker job persisten + idempotency** | **belum ada** | Lease/timeout/recovery, `Idempotency-Key` belum ada. |
-| **Persistence (SQLite) + riwayat kasus** | **belum ada** | Lihat ADR yang diusulkan di NEXT_STEPS.md. |
+| **Backend FastAPI + endpoint kontrak** | `implemented` | `app/api/main.py` + routers `health`/`media`/`jobs`/`retrieve`: `/health`, `/ready`, `POST+GET /api/v1/media`, `POST /api/v1/retrieve` (202 + `Idempotency-Key`), `GET /api/v1/jobs/{id}`, `GET /api/v1/runs`, `POST /api/v1/validate-bundle`. Sintaks tervalidasi; **belum dijalankan** karena FastAPI tak terpasang di sandbox (lihat batasan di atas). |
+| **Worker job persisten + idempotency** | `implemented` | `app/workers/worker.py`: klaim job via UPDATE bersyarat (aman tanpa row lock SQLite), lease `AURORA_JOB_TIMEOUT`, `recover_stale_jobs()` saat startup, retry `MAX_ATTEMPTS=3`, mode thread in-process **atau** proses terpisah (`python -m app.workers.worker`). Belum dijalankan (butuh SQLAlchemy). |
+| **Persistence (SQLite) + riwayat kasus** | `implemented` | `app/services/retrieval_service.py` menyimpan `Case`/`Revision`/`RetrievalRun`; `GET /api/v1/runs` mengembalikan riwayat. Konflik revisi (teks/gambar berbeda pada revisi sama) → 409. Belum dijalankan (butuh SQLAlchemy). |
+| **Capability report (`/ready`)** | `demo_verified` | `app/services/capabilities.py` — **16/16 asersi lulus** dijalankan aktual di Python 3.11.15 dengan stub `dotenv`: corpus hilang → `unconfigured`; provider dipilih tanpa adapter → `unsupported`; `dense_enabled=true` tanpa implementasi → `unsupported` (bukan `ok`); vendor tanpa kredensial → `unconfigured`; nama provider salah → `unconfigured` **tanpa fallback fixture**; fixture **ditolak** saat `mode=live` (inv 12). |
 | **Frontend React/Vite (4 tab)** | **belum ada** | Tab Bukti / Asal Gambar / Deteksi AI / Jejak Pencarian belum dibuat. |
 | **Ekspor/impor ZIP aman** | **belum ada** | Penolakan path traversal/zip bomb/symlink belum diimplementasikan. |
 | **Provenance gambar (dHash/local image index)** | **belum ada** | `image_matches` saat ini selalu `[]`. |
@@ -87,6 +118,37 @@ PASS  tidak ada signal 'likely_ai_generated' saat status != ok (inv 11)
 dedup    : items=9 duplicate_clusters=8 independence_groups=8
 diversity: items=9 independent_groups=8 providers=1 group_ratio=0.888889
 ```
+
+### Verifikasi `capabilities.py` (Tahap 1) — 16/16 lulus
+
+Dijalankan aktual pada Python 3.11.15 dengan stub `dotenv` (semua modul lain
+dalam rantai ini murni stdlib):
+
+```
+PASS  local corpus ada -> status ok  (ok)
+PASS  corpus hilang -> bukan ok  (unconfigured)
+PASS  web search none -> disabled
+PASS  web search dipilih tanpa adapter -> unsupported
+PASS  dense_enabled=true -> unsupported (BUKAN ok)
+PASS  dense_enabled=false -> disabled
+PASS  demo: detector image callable (fixture)  (demo_fixture_image=ok)
+PASS  live: fixture DITOLAK (bukan ok)  (demo_fixture_image=unconfigured)
+PASS  vendor tanpa kredensial -> unconfigured (image)
+PASS  vendor tanpa kredensial -> unconfigured (text)
+PASS  nama provider salah -> unconfigured, tanpa fallback fixture  (sightengin3=unconfigured)
+PASS  local_corpus_ready() true saat corpus ada  (9 documents)
+PASS  local_corpus_ready() false saat corpus hilang
+PASS  all_capabilities memuat retrieval + forensics
+PASS  setiap entry berbentuk ProviderStatus kontrak
+PASS  status selalu enum kontrak yang sah
+
+16/16 lulus
+```
+
+Tiga di antaranya adalah pencegahan bug kejujuran status yang lazim: capability
+tanpa implementasi tidak boleh melaporkan `ok`, kredensial hilang harus
+`unconfigured` (bukan `unsupported`), dan salah tulis nama provider tidak boleh
+diam-diam turun ke fixture.
 
 ### Kalibrasi ambang near-duplicate (diukur, bukan ditebak)
 
